@@ -68,13 +68,17 @@ state copy. Do NOT preserve paragraphs of body text, marketing
 copy, legal text, or anything that is not load-bearing for
 navigation.
 
-### Modals, banners, and overlays
+### Modals, banners, and overlays (initially visible only)
 
 Anything that is layered on top of the page and partially obscures
-it: cookie banners, "sign up for our newsletter" modals, "your
-trial ends in N days" banners, "install our app" prompts, etc. For
-each, record: what it says, where it is, and how to dismiss it
-(which element ref).
+it, **as it appears on first load**: cookie banners, "sign up for
+our newsletter" modals, "your trial ends in N days" banners,
+"install our app" prompts, etc. For each, record: what it says,
+where it is, and how to dismiss it (which element ref).
+
+Modals and overlays that appear only AFTER clicking a trigger
+are covered in the **Interaction states** section below — do not
+document them here.
 
 ### Form structures
 
@@ -102,6 +106,219 @@ Example:
 ```
 
 This is the single biggest token saver on list-heavy pages.
+
+## Interaction states
+
+A static snapshot of the page misses everything that only appears
+AFTER a user interacts. Modals, dropdown menus, hover-revealed
+actions, expanded accordions, toasts, lightboxes, and inline
+editing states are all invisible until something is clicked,
+hovered, or focused. **The compiler must trigger every interactive
+element and document the resulting state.** This section is the
+rules for doing that.
+
+For every interactive state you encounter, record four things:
+
+1. **`trigger`** — the element ref whose click/hover/focus opens
+   the state. If the trigger is conditional (the state only opens
+   sometimes), document the condition.
+2. **`state`** — a short description of what appears, the element
+   refs of the new content (or a sub-inventory of just the
+   state-specific elements), and where on screen it lives
+   (centered modal? bottom-right toast? inline below the
+   trigger?).
+3. **`dismiss`** — how to close the state. Common dismiss
+   actions: clicking a close (X) button, pressing Escape,
+   clicking outside the state, submitting a form, navigating
+   away. If more than one dismiss path exists, document each.
+4. **`persistence`** — does the state survive across page
+   navigations? Most modals do not; some banners (cookie consent)
+   do. Mention this if it matters for the workflow.
+
+### Modals and dialogs
+
+Modals are the most important interaction state. They frequently
+contain their own forms and workflows (the "new issue" modal is a
+textbook case — see `../examples/complex-spa/new-issue.md`).
+
+```markdown
+### `new-issue-modal` (triggered by `new-issue-btn`)
+
+- **type:** modal
+- **trigger:** `new-issue-btn` (button in the team-view tab bar)
+- **state container:** `[data-testid="new-issue-modal"]`
+- **location:** centered, 600px wide, with a dimmed full-screen
+  overlay behind it
+- **contains:** `title-input`, `description-input`, `status-select`,
+  `priority-select`, `assignee-select`, `labels-select`,
+  `cancel-btn`, `create-btn`, `modal-close`
+- **dismiss:** click `modal-close`, click `cancel-btn`, press
+  Escape, or click on the dimmed overlay
+- **persistence:** dismissed on any navigation; reopening
+  `new-issue-btn` starts a fresh modal
+```
+
+Decide whether a modal deserves its own `SKILL.md` or lives
+inside the parent page's skill. Rule of thumb: if the modal has
+its own multi-step workflow (form fields, validation, submit),
+give it its own file. If it is a simple confirmation
+("Are you sure?") it stays as an interaction state in the
+parent skill.
+
+### Dropdown menus and popovers
+
+Menus that open on click, kebab (...) buttons, filter popovers,
+sort dropdowns. They overlay the page in a small region, usually
+anchored to the trigger.
+
+```markdown
+### `status-filter-menu` (triggered by `filter-button`)
+
+- **type:** popover
+- **trigger:** `filter-button` (right side of the tab bar)
+- **state container:** `[data-testid="status-filter-menu"]`
+- **location:** anchored below `filter-button`, ~240px wide
+- **contains:** `filter-option-assignee`, `filter-option-label`,
+  `filter-option-priority`, `filter-clear-all`
+- **dismiss:** click outside the popover, press Escape, or click
+  a filter option (which both applies the filter AND dismisses)
+- **persistence:** dismissed on any click outside; the filter
+  itself persists across the session
+```
+
+### Hover-revealed actions and tooltips
+
+Some elements (table rows, list items, cards) reveal additional
+actions only on hover: a quick-actions toolbar, a "more" menu, a
+"delete" button. These are easy to miss in a static snapshot
+because the trigger is just "hover anywhere on the row."
+
+For each hover-revealed action:
+
+- Record the parent element ref (`issue-row`)
+- Record the hover-revealed element ref (`issue-quick-actions`)
+- Note the action each child performs
+- Note whether the action is also accessible without hover (a
+  common pattern is "hover on desktop, always visible on
+  touch/mobile")
+
+```markdown
+### `issue-quick-actions` (hover-revealed on `issue-row`)
+
+- **type:** hover-revealed
+- **trigger:** hover anywhere on `issue-row`
+- **state container:** inside `issue-row`, right side
+- **contains:** `issue-quick-complete` (checkmark), `issue-quick-
+  assign` (avatar+), `issue-quick-more` (kebab menu)
+- **note:** always visible on touch devices; on desktop, fades
+  in over 100ms on hover
+```
+
+Tooltips (the small text labels that appear when you hover an
+icon for 1+ seconds) are usually NOT worth documenting unless
+they reveal information the agent cannot get elsewhere.
+
+### Accordions and expand-collapse sections
+
+Collapsible content blocks: FAQ items, "Show more" sections,
+tree-view nodes. The state change is "expanded" or "collapsed."
+
+```markdown
+### `faq-item-expanded` (triggered by clicking `faq-question`)
+
+- **type:** expand-collapse
+- **trigger:** `faq-question` (the question text in any
+  `faq-item`)
+- **state change:** the `faq-answer` for that item becomes
+  visible; the chevron icon rotates 180deg
+- **dismiss:** click `faq-question` again, or click another
+  `faq-question` to collapse this one (depending on whether
+  the accordion is single-open or multi-open)
+- **persistence:** collapsed/expanded state typically does NOT
+  persist across page reloads
+```
+
+### Tabs (in-page, no URL change)
+
+In-page tabs that swap content without changing the URL. (URL-
+changing tabs are covered as separate route families in
+`route-grouping.md`.)
+
+```markdown
+### `tab-content-active` (triggered by `tab-active`)
+
+- **type:** in-page tab
+- **trigger:** `tab-active` (or `tab-backlog` /
+  `tab-completed` for other tabs)
+- **state change:** `issue-list` content is replaced with the
+  selected tab's issues
+- **dismiss:** N/A (selecting another tab replaces it)
+- **persistence:** the selected tab is reflected in the URL on
+  some sites — check the URL after clicking; if the URL changed,
+  this is actually a separate route family
+```
+
+### Toasts and ephemeral notifications
+
+Short-lived confirmations and error messages that appear (usually
+bottom-right) and disappear after a few seconds. Toasts are
+almost never worth documenting as interaction states — they
+require no action from the agent. **Mention them in the
+parent page's "Edge cases" section only if** the agent might
+mistake them for persistent state, or if the toast blocks
+interaction with the underlying page (rare).
+
+### Lightboxes and image zoom
+
+Click-to-zoom image viewers, full-screen video players, PDF
+viewers. The state is a full-screen overlay with media controls.
+
+```markdown
+### `image-lightbox` (triggered by clicking any `product-image`)
+
+- **type:** lightbox
+- **trigger:** click on any `product-image` thumbnail
+- **state container:** `[data-testid="image-lightbox"]`
+- **location:** full-screen, centered image, controls overlay
+  bottom
+- **contains:** `lightbox-image`, `lightbox-prev`,
+  `lightbox-next`, `lightbox-close`
+- **dismiss:** click `lightbox-close`, press Escape, or click
+  outside the image
+```
+
+### Inline editing states
+
+Form fields that are read-only until clicked (the user clicks
+the field, it becomes editable, blur or Enter commits the
+change). Common for issue titles, descriptions, comments.
+
+```markdown
+### `title-editor` (triggered by clicking `issue-title`)
+
+- **type:** inline editor
+- **trigger:** click on `issue-title`
+- **state change:** `issue-title` is replaced by `title-input`
+  (a text input) with the current value pre-filled and focused
+- **dismiss / commit:** blur (clicking outside) saves, Escape
+  cancels and reverts, Enter saves
+- **persistence:** the saved value persists; the editor is only
+  re-triggered by another click on the title
+```
+
+### State hygiene
+
+While interacting, **close each state before opening the next**.
+If you click `new-issue-btn` and then click `filter-button`
+without first closing the modal, you will get confused about
+which state is "on top" and the resulting documentation will
+be wrong. Click `modal-close` (or press Escape) between
+triggered states.
+
+Also: some sites let you stack modals (a modal that opens
+another modal). If you encounter this, document each level of
+the stack as a separate interaction state, with the lower
+modal dimmed more heavily than the upper one.
 
 ## What to ignore
 
