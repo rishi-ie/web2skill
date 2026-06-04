@@ -234,6 +234,35 @@ requires:
 
 ---
 
+## Running the skills you compile
+
+Compiling a skill produces a folder of markdown files. To actually **run** them (have an agent follow the workflows against a live browser), you need a browser-use client. The recommended one is [browser-use](https://github.com/browser-use/browser-use) — open source, Python, headed mode by default, supports a custom system prompt.
+
+See [`docs/integrations/browser-use.md`](./docs/integrations/browser-use.md) for the full guide. The minimum:
+
+```python
+import asyncio
+from pathlib import Path
+from browser_use import Agent
+from langchain_openai import ChatOpenAI
+
+async def main():
+    skill = Path("~/.claude/skills/github.com").expanduser().read_text()
+    agent = Agent(
+        task="Star the web2skill repo on GitHub",
+        llm=ChatOpenAI(model="gpt-4o"),
+        extend_system_message=skill,
+    )
+    result = await agent.run()
+    print(result)
+
+asyncio.run(main())
+```
+
+Other integrations (Stagehand, raw Playwright, Anthropic Computer Use) are also possible — w2s skills are just markdown, so any agent that can read a system prompt can use them.
+
+---
+
 ## Project status
 
 This is the design and initial implementation. The skill format and methodology are stable. The agent integrations are being validated across Claude Code, Codex, and Cursor.
