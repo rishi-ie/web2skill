@@ -62,20 +62,42 @@ A useful skill needs at least 2-3 URLs that share a structure, plus
 back: "I need at least 2-3 URLs to identify a route family. Can you
 share a few more?"
 
-### Step 2 — For each URL, distill the page
+### Step 2 — For each URL, distill the page (observe AND interact)
+
+A static snapshot misses half the page. Modals, dropdown menus,
+popovers, hover-revealed actions, expanded accordions, and
+toasts only exist AFTER something is clicked or hovered. The
+compiler must interact with the page, not just observe it.
 
 For each URL in the list, use your browser tool to:
 
 1. Navigate to the URL
 2. Wait for the page to be fully loaded (network idle, no visible
    loading spinners)
-3. Extract a COMPACT representation of the page
+3. Extract a COMPACT representation of the page in its initial
+   state (layout, visible elements, currently-visible modals or
+   banners)
+4. **Click every interactive element on the page** (buttons, tabs,
+   dropdown triggers, menu items, accordions, "more" links) and
+   document the resulting state
+5. **Hover over interactive elements that have hover-only
+   behavior** (tooltips, hover menus, action buttons that appear
+   on row hover) and document what appears
+6. For each triggered modal/popover/menu: record it as a distinct
+   interaction state in the same `SKILL.md`, with its own element
+   inventory, workflows, and dismiss behavior
+7. Close each opened state before moving to the next, so you do
+   not stack modals
 
-What to extract is specified in `distillation.md`. In short: every
-interactive element with its label, role, stable selector, and
-location on the page, plus the high-level layout (header, sidebars,
-main column, footer), plus any modals, banners, or overlays currently
-visible.
+What to extract (and how to identify stable selectors) is
+specified in `distillation.md`. The rules for documenting
+interaction states (modals, dropdowns, hover menus, accordions)
+are in the **Interaction states** section of `distillation.md`.
+
+In short: every interactive element with its label, role, stable
+selector, and location on the page, plus the high-level layout
+(header, sidebars, main column, footer), plus every modals,
+banners, or overlays that can be triggered on this page.
 
 What to ignore: scripts, styles, decorative SVGs, hidden elements,
 tracking pixels, ads, analytics. The page must be readable in under
