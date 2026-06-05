@@ -490,6 +490,72 @@ web2skill/
 
 ---
 
+## v2: Executable workflows
+
+v1 produces **reference manuals** — element inventories and prose workflows that an LLM reads to decide what to do. Useful and token-efficient, but still needs an LLM in the loop at runtime.
+
+v2 produces **executable scripts** — standalone workflow files that agent-browser runs directly without an LLM making decisions. Deterministic. Pre-resolved element refs. Click-and-run.
+
+```
+v1 skill
+├── overview.md
+├── home.md
+│   ├── Element inventory     ← where things are
+│   └── Workflows (prose)     ← LLM reads and decides
+└── ...
+
+v2 skill (adds workflows/)
+├── overview.md
+├── home.md
+│   ├── Element inventory
+│   └── Workflows (prose)
+└── workflows/                   ← NEW: standalone executable
+    ├── home-nav-pricing.md      ← agent-browser runs directly
+    ├── home-nav-signup.md
+    └── login-default.md
+```
+
+Each `workflows/*.md` is a deterministic sequence:
+
+```markdown
+---
+name: home-nav-pricing
+trigger: "Show me the pricing page"
+---
+agent-browser open https://harvestgrove.com/
+agent-browser snapshot -i
+agent-browser click @e4
+agent-browser wait --selector ".pricing-content"
+agent-browser url
+# expected: https://harvestgrove.com/pricing
+```
+
+agent-browser reads this, executes, verifies the outcome. No LLM at runtime.
+
+**Pipeline:**
+
+```
+Compile time: agent-browser (snapshot + click every element) → skill with element inventory + workflows/
+Runtime:      workflows/*.md → w2s-runner.sh → agent-browser → done
+```
+
+**What changes in v2:**
+- Workflows become first-class (`workflows/` subdirectory, one file per action)
+- `trigger` field replaces prose (what the user says to invoke it)
+- Pre-resolved agent-browser commands in every workflow
+- Outcome verification at the end of each workflow (URL, element visible, text present)
+- LLM only at compile time — execution path is skill → agent-browser directly
+
+**What stays the same:**
+- Compilation (agent-browser as distillation engine)
+- Element inventory (still needed to author workflows at compile time)
+- Skills directory structure
+- agent-browser as the runtime
+
+Implementation: auto-generate `workflows/` from element inventory at compile time. Verify format with existing validator.
+
+---
+
 ## What w2s does NOT do
 
 Be honest about scope. w2s does not:
