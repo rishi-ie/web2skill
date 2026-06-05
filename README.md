@@ -16,8 +16,55 @@ That's the whole idea.
 
 ---
 
+## One-prompt setup
+
+Don't want to do this manually? Give this prompt to your agent — it will set everything up for you:
+
+```
+You are setting up web2skill (w2s) on this machine. Follow these steps IN ORDER.
+
+Step 1 — Check prerequisites:
+- Verify git is installed (run `git --version`).
+- Verify Python 3.11+ is installed (run `python3 --version`).
+If either is missing, stop and tell the user to install it first.
+
+Step 2 — Clone the w2s repository:
+- If ~/web2skill already exists, run `git -C ~/web2skill pull`.
+- Otherwise, run: `git clone https://github.com/rishi-ie/web2skill.git ~/web2skill`
+
+Step 3 — Install w2s into your agent's skills directory:
+- Detect which agent you are (Claude Code, Codex CLI, Cursor, etc.).
+- Claude Code: `mkdir -p ~/.claude/skills && cp -r ~/web2skill/w2s ~/.claude/skills/web2skill`
+- Codex: `mkdir -p ~/.codex/skills && cp -r ~/web2skill/w2s ~/.codex/skills/web2skill`
+- Cursor: ask the user for the skills directory path.
+- If unsure: install for all of the above.
+
+Step 4 — (Optional) Ask the user: "Do you want browser-use installed? It lets compiled skills run in a real browser with a visible window."
+If yes:
+  - `pip install browser-use pyyaml`
+  - `python3 -m playwright install chromium`
+  - Ask which LLM provider (OpenAI, Anthropic, or Google) and how to set the API key.
+
+Step 5 — Verify:
+- Confirm `SKILL.md` exists at the target path. Read the first 5 lines — it should start with `---`.
+- If Step 4 ran: `python3 ~/web2skill/w2s/validate.py ~/web2skill/w2s/examples/simple-static-site`
+
+Step 6 — Print this exact report:
+  w2s installed at: <path>
+  Examples at: ~/web2skill/w2s/examples/
+  [browser-use installed: yes/no]
+  Next step: "Compile https://github.com/foo/bar into a skill."
+
+Do not modify any files. Stop after the report.
+```
+
+What it does: detects your platform, clones the repo, copies the skill into your agent, optionally installs browser-use, runs the validator to prove it works, and prints a clean handoff. Total: under 2 minutes.
+
+---
+
 ## Table of contents
 
+- [One-prompt setup](#one-prompt-setup)
 - [Why this exists](#why-this-exists)
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
