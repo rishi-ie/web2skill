@@ -172,9 +172,11 @@ w2s/
 ├── format-spec.md        ← exact schema for output skills
 ├── distillation.md       ← how to extract a compact page map
 ├── route-grouping.md     ← how to group URLs into route families
+├── validate.py           ← lint a compiled skill against the format spec
 └── examples/             ← worked examples
     ├── simple-static-site/
-    └── complex-spa/
+    ├── complex-spa/
+    └── web2skill-agent-browser/
 ```
 
 When you ask your agent to compile a website, the agent follows a 7-step methodology:
@@ -182,10 +184,10 @@ When you ask your agent to compile a website, the agent follows a 7-step methodo
 1. **Extract the URL list** — parse the user's request into URLs
 2. **Distill each URL** — observe the page in its initial state AND click every interactive element to trigger modals, dropdowns, hover-revealed actions, etc.
 3. **Group URLs into route families** — URLs that share a structure share a file
-4. **Write one `SKILL.md` per route family** — page architecture, element inventory, workflows, edge cases
+4. **Write one `SKILL.md` per route family** — page architecture, element inventory, workflows, edge cases, and optionally agent-browser commands
 5. **Write the `overview.md`** — site map, route index, site-wide patterns
 6. **Save the skills** — to the agent's skills directory
-7. **Self-check** — verify every ref in workflows exists in the element inventory, every match pattern is real, selectors are stable
+7. **Self-check** — verify every ref in workflows exists in the element inventory, every match pattern is real, selectors are stable, and all agent-browser commands are syntactically valid
 
 The output looks like this:
 
@@ -383,7 +385,11 @@ For the full methodology — how the agent should distill, group, and document �
 
 ## Running compiled skills
 
-Compiling a skill produces a folder of markdown. To actually **run** it (have an agent follow the workflows against a live browser), you need a browser-use client. The recommended one is [**browser-use**](https://github.com/browser-use/browser-use) — open source, Python, headed mode by default, supports a custom system prompt.
+Compiling a skill produces a folder of markdown. To actually **run** it (have an agent follow the workflows against a live browser), you need a browser-use client or agent-browser.
+
+### Option 1: browser-use (Python)
+
+The recommended one is [**browser-use**](https://github.com/browser-use/browser-use) — open source, Python, headed mode by default, supports a custom system prompt.
 
 A w2s skill is just markdown with YAML frontmatter. browser-use accepts a custom system prompt. You read the skill, pass it as the system prompt, the agent uses it. That's the whole integration.
 
@@ -410,7 +416,39 @@ asyncio.run(main())
 
 You will see Chrome open and watch the agent navigate using the skill.
 
-**Full guide:** [`docs/integrations/browser-use.md`](./docs/integrations/browser-use.md) — covers installation, a `load_skill()` helper that picks the right `SKILL.md` for the task, headed vs headless mode, multi-skill tasks, and gotchas.
+**Full guide:** [`docs/integrations/browser-use.md`](./docs/integrations/browser-use.md)
+
+### Option 2: agent-browser (CLI)
+
+[**agent-browser**](https://github.com/vercel-labs/agent-browser) is a Rust-based CLI for browser automation designed specifically for AI agents. It uses an **accessibility tree with numbered `@eN` refs** (~200-400 tokens instead of full DOM), has a built-in **skills system**, and is free and open source.
+
+w2s skills optimized for agent-browser include an `## Agent Browser Commands` section that contains literal `agent-browser` CLI commands. The `w2s-runner.sh` script executes them directly:
+
+```bash
+# Install
+npm i -g agent-browser && agent-browser install
+
+# Run a w2s skill
+cd w2s/examples/web2skill-agent-browser
+./w2s-runner.sh home "Show me the home page"
+```
+
+agent-browser also works as the **distillation engine** — use `agent-browser snapshot -i` to compile a site, then write the w2s skill.
+
+**Full guide:** [`docs/integrations/agent-browser.md`](./docs/integrations/agent-browser.md)
+
+### Which should you use?
+
+| | browser-use | agent-browser |
+|---|---|---|
+| **Interface** | Python library | CLI |
+| **Best for** | LLM-driven agents (Claude Code, Codex) | Direct execution, scripted automation |
+| **Token efficiency** | Uses full DOM/accessibility tree | Compact @eN refs (~200-400 tokens) |
+| **Observability** | Limited | Built-in dashboard, screenshots, streaming |
+| **Skills system** | No (w2s provides it) | Yes (built-in) |
+| **Setup** | `pip install browser-use` | `npm i -g agent-browser` |
+
+**Both integrations:** w2s skills are portable — the same skill works with both tools. — covers installation, a `load_skill()` helper that picks the right `SKILL.md` for the task, headed vs headless mode, multi-skill tasks, and gotchas.
 
 **Other integrations** are also possible (Stagehand, raw Playwright, Anthropic Computer Use) — w2s skills are just markdown, so any agent that can read a system prompt can use them.
 
