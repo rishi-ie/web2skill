@@ -1,36 +1,39 @@
-# Using w2s skills with agent-browser
+# Compiling w2s skills with agent-browser
 
-[w2s](../../README.md) generates skills. [agent-browser](https://github.com/vercel-labs/agent-browser) is the CLI tool that executes them. This document shows how the two integrate — how to compile skills using agent-browser's snapshot engine, and how to run compiled skills through agent-browser.
+[agent-browser](https://github.com/vercel-labs/agent-browser) is the recommended tool for compiling w2s skills. Its accessibility-tree snapshots and element refs (`@eN`) are a natural fit for w2s's element inventory format.
+
+This document covers how to use agent-browser during **compilation only**. The output of w2s is a comprehensive page reference — workflow generation is a separate downstream project.
 
 ---
 
-## The core mapping
+## Why agent-browser for compilation
 
-w2s and agent-browser both use **element references** to identify UI elements. The difference is in format and how they're resolved:
-
-| | w2s | agent-browser |
+| | agent-browser | Generic headless browser |
 |---|---|---|
-| **Ref format** | Named, kebab-case: `new-issue-btn`, `issue-row` | Numbered, `@eN`: `@e1`, `@e2`, `@e3` |
-| **How resolved** | CSS selector stored in skill | Accessibility tree snapshot assigns refs dynamically |
-| **Determinism** | High — selector is stable | High — tree is deterministic |
-| **Compile time** | Refs assigned once at compile | Refs assigned per-snapshot at runtime |
+| **Snapshot output** | Compact accessibility tree with `@eN` refs (~200-400 tokens) | Full DOM (~3000-5000 tokens) |
+| **Element identification** | `role=button[name="New issue"]` semantics | CSS class names (often auto-generated) |
+| **Token efficiency** | Designed for AI agents | Not optimized for agents |
+| **Interactive snapshots** | `snapshot -i` shows refs inline | Manual DOM inspection |
+| **Built-in screenshot annotation** | `screenshot --annotate` overlays refs | None |
 
-The integration bridges these by **converting w2s element refs to agent-browser selectors** at runtime, using the same selectors that w2s recorded.
+The accessibility tree maps directly to w2s's element inventory format. What agent-browser calls `@e5` becomes a w2s element with a stable selector.
 
 ---
 
-## Compiling a site using agent-browser
-
-Use agent-browser as the distillation engine instead of a generic browser tool. The `snapshot -i` command produces an accessibility tree that you use to author the skill.
-
-### Step 1 — Install agent-browser
+## Setup
 
 ```bash
 npm i -g agent-browser
 agent-browser install
 ```
 
-### Step 2 — Open the site and take a snapshot
+`agent-browser install` downloads the Chromium binary. Run it once per machine.
+
+---
+
+## The compilation workflow
+
+### 1. Open the URL
 
 ```bash
 agent-browser open https://github.com/foo/bar
@@ -40,174 +43,142 @@ agent-browser snapshot -i
 The `-i` flag gives you an **interactive snapshot** with numbered refs:
 
 ```
-@e1  button  "Star"    (top-right of repo header)
-@e2  link    "Issues"  (tabs row)
-@e3  button  "Code"    (top-right, green)
+@e1  link    "Skip to content"
+@e2  link    "Sign in"
+@e3  link    "Sign up"
+@e4  button  "Search"
+@e5  link    "Pull requests"
+@e6  link    "Issues"
+@e7  link    "Codespaces"
+@e8  link    "Marketplace"
+@e9  link    "Explore"
+@e10 link    "Pricing"
 ...
 ```
 
-### Step 3 — Interact and capture all states
+### 2. Click every interactive element
 
-Click every interactive element to find modals, dropdowns, and hover-revealed actions:
-
-```bash
-agent-browser click @e2          # Click Issues tab
-agent-browser snapshot -i        # Snapshot of issues page
-agent-browser click @e7          # Click New issue button
-agent-browser snapshot -i        # Snapshot of modal (URL changes to /issues/new)
-```
-
-Use `--json` for machine-readable output:
+For each `@eN` in the snapshot, click it and snapshot again to capture the resulting state:
 
 ```bash
-agent-browser snapshot -i --json | jq '.data.refs'
+agent-browser click @e2          # Sign in
+agent-browser snapshot -i        # Capture sign-in modal
+# ... document modal state, fields, dismiss behavior ...
+
+agent-browser press Escape       # Close modal
+
+agent-browser click @e6          # Issues link → navigates
+agent-browser snapshot -i        # Snapshot of /issues
+# ... document new page state ...
 ```
 
-### Step 4 — Map @eN refs to w2s element refs
+**Skip destructive elements** — do not click submit, publish, push, delete, pay, send, post, etc. Document them in the inventory with their selector and label, mark them `destructive: true` in the output, and move on. See `w2s/SKILL.md` Step 2 for the full safety rule.
 
-Each agent-browser ref maps to a w2s element in the skill:
+### 3. Hover over hover-revealed elements
 
-| agent-browser snapshot | w2s element |
-|---|---|
-| `@e1  button  "Star"` | `### star-btn` with selector from DOM |
-| `@e3  link  "Issues"` | `### issues-tab` |
-| `@e5  link  "New issue"` | `### new-issue-btn` |
+```bash
+agent-browser hover @e5          # Pull requests link
+agent-browser snapshot -i        # Capture hover state (tooltip, dropdown)
+```
 
-For each interactive element you see in the snapshot:
-1. Note the `@eN` ref and label
-2. Get the stable selector from the DOM (use `agent-browser screenshot --annotate` to see numbered overlay)
-3. Write the w2s element entry with both the `@eN` label and the selector
+### 4. Map `@eN` refs to w2s element refs
 
-### Step 5 — Write workflows using agent-browser commands
+For each interactive element, note the `@eN` ref, label, role, and location. Write the w2s element entry with the stable selector and an `ab-ref` field recording the snapshot line:
 
-Workflows in the w2s skill reference w2s element refs. At runtime, agent-browser maps those refs to its current `@eN` refs.
+```markdown
+### `new-issue-btn`
 
-See [agent-browser-commands.md](./agent-browser-commands.md) for the full command reference that maps to w2s workflow actions.
+- **type:** button
+- **selector:** `a[href$="/issues/new"]`
+- **fallback:** `role=button[name="New issue"]`
+- **location:** top-right of main column, green
+- **action:** navigates to `/owner/repo/issues/new`
+- **ab-ref:** "@e8  link  "New issue""
+```
+
+The `ab-ref` field is optional metadata that records the exact snapshot line, useful for debugging and for any downstream tool that wants to map back to agent-browser's runtime refs.
+
+### 5. Document forms
+
+For every form you encounter, snapshot it and document every field with its label, type, validation rules, and required/optional status. See `w2s/format-spec.md` "Forms" section for the schema.
+
+### 6. Document states (modals, dropdowns, toasts, etc.)
+
+For every state triggered by a click/hover, record it as a `## States` entry in the output:
+
+```markdown
+### `sign-in-modal`
+
+- **trigger:** `sign-in-btn`
+- **dismiss:** Escape key, or click outside
+- **contains:** `email-input`, `password-input`, `submit-btn`
+- **notes:** traps focus; first input auto-focused
+```
+
+See `w2s/distillation.md` "Interaction states" section for the full taxonomy.
+
+### 7. Write the comprehensive reference
+
+For each route family, write one `SKILL.md` with all the elements, forms, states, and edge cases you observed. The schema is in `w2s/format-spec.md`.
 
 ---
 
-## Running a w2s skill through agent-browser
+## Useful agent-browser commands during compilation
 
-### The lookup chain
-
-When agent-browser executes a w2s skill, it follows this chain:
-
-```
-w2s skill (workflow: "Click `new-issue-btn`")
-    ↓
-w2s element inventory looks up `new-issue-btn`:
-    selector: `a[href$="/issues/new"]`
-    fallback: text="New issue"
-    location: top-right of main column, green
-    ↓
-agent-browser maps selector to @eN:
-    agent-browser find "a[href$='/issues/new']" --first
-    → returns @e12 (or whichever ref the current snapshot has)
-    ↓
-agent-browser click @e12
-```
-
-### The runtime bridge
-
-The bridge is a simple script that reads the w2s skill, finds the relevant element, and calls agent-browser. See `examples/web2skill-agent-browser/w2s-runner.sh` for the implementation.
-
-### Quick example
-
-```bash
-# Start a session
-agent-browser open https://github.com/foo/bar
-
-# Load a w2s skill and find an element by its w2s ref
-SKILL_DIR=~/.claude/skills/github.com
-
-# Find the star button using the skill's selector
-agent-browser find 'a[href$="/foo/bar"]' --first
-# Returns @e5
-
-agent-browser click @e5
-# Stars the repo
-
-agent-browser snapshot -i
-# Verify: star button now says "Unstar"
-```
-
-See `examples/web2skill-agent-browser/` for a complete worked example with a full w2s skill and the runtime bridge script.
-
----
-
-## Key agent-browser commands for w2s
-
-| w2s workflow action | agent-browser command |
+| Goal | Command |
 |---|---|
-| Navigate to URL | `agent-browser open <url>` |
-| Confirm on route | `agent-browser url` → verify |
-| Find element by ref | `agent-browser find <selector> --first` |
+| Open URL | `agent-browser open <url>` |
+| Interactive snapshot | `agent-browser snapshot -i` |
+| JSON snapshot for parsing | `agent-browser snapshot -i --json` |
+| Screenshot with numbered refs | `agent-browser screenshot --annotate` |
 | Click element | `agent-browser click <@eN>` |
+| Hover element | `agent-browser hover <@eN>` |
 | Type into field | `agent-browser type <@eN> "<text>"` |
-| Wait for element | `agent-browser wait <selector>` |
-| Verify state | `agent-browser snapshot -i` |
+| Press key | `agent-browser press <@eN> <key>` |
 | Get current URL | `agent-browser url` |
-| Screenshot with labels | `agent-browser screenshot --annotate` |
-| Batch commands | `agent-browser batch --json` |
+| Wait for element | `agent-browser wait <selector>` |
+| Get CSS selector for an `@eN` | `agent-browser evaluate "document.querySelector('[aria-label=\"...\"]') ? '<selector>' : null"` |
 
 See [agent-browser-commands.md](./agent-browser-commands.md) for the full command reference.
 
 ---
 
-## Compiling w2s skills for agent-browser specifically
+## Programmatic compilation
 
-To produce skills optimized for agent-browser (rather than a generic browser agent):
+If you're building a tool that auto-generates w2s skills, use the JSON snapshot output:
 
-### Use accessibility-based selectors
-
-Prefer selectors that align with what the accessibility tree exposes:
-
-```markdown
-### `new-issue-btn`
-- type: button
-- selector: `role=button[name="New issue"]`     ← agent-browser native
-- fallback: `a[href$="/issues/new"]`           ← DOM fallback
-- location: top-right of main column, green
-- ab-ref: "@e5  button  "New issue""         ← the snapshot line
+```bash
+agent-browser snapshot -i --json | jq '.data.refs'
 ```
 
-The `ab-ref` field records the exact agent-browser snapshot line for the element. This makes the skill self-documenting for agent-browser users.
+Returns:
 
-### Write workflows as command sequences
-
-In addition to the standard w2s prose workflows, include an `## Agent Browser Commands` section with the literal agent-browser commands:
-
-```markdown
-## Workflows
-
-### Create a new issue
-
-1. Confirm on route `/owner/repo/issues`
-2. Click `new-issue-btn`
-3. Fill in title (input labeled "Title")
-4. Click "Submit new issue"
-
-## Agent Browser Commands
-
-### Create a new issue
-
-agent-browser click @e5
-agent-browser type @e8 "Issue title"
-agent-browser type @e9 "Issue body"
-agent-browser click @e12
+```json
+{
+  "e1": {"role": "link", "name": "Sign in", "selector": "a[href*='login']"},
+  "e2": {"role": "button", "name": "Search", "selector": "button[aria-label='Search']"},
+  ...
+}
 ```
 
-This dual-format approach means the skill works with:
-- Any agent that reads the prose workflow
-- agent-browser directly via the command section
-- Any LLM that uses the skill as context
+You can iterate through every ref, click it, snapshot the new state, and write the resulting markdown. The downstream workflow generator reads the markdown and figures out what to do at runtime.
+
+---
+
+## Common pitfalls
+
+- **Auto-generated class names.** Sites like Notion, Figma, Linear use CSS-in-JS class hashes (`.css-1a2b3c`). agent-browser's accessibility tree resolves these for you — prefer the `role=` and `name=` selectors it surfaces over CSS class selectors.
+- **iFrames.** If content lives in an iframe, you may need to switch contexts. agent-browser's `evaluate` command can do this with `document.querySelector('iframe').contentDocument`.
+- **Shadow DOM.** Some sites use shadow DOM (Google, YouTube). agent-browser's accessibility tree flattens shadow DOM by default.
+- **Token limits.** A full page snapshot can exceed your model's context window. Snapshot in sections (header, then main, then footer) and merge the results.
+- **Destructive elements.** Never click submit/publish/delete during compilation. Document them with their selector and skip the click. See `w2s/SKILL.md` Step 2.
 
 ---
 
 ## See also
 
 - [agent-browser README](https://github.com/vercel-labs/agent-browser)
-- [agent-browser skills docs](https://github.com/vercel-labs/agent-browser/tree/main/skill-data/core)
 - [w2s format spec](../../w2s/format-spec.md)
+- [w2s distillation guide](../../w2s/distillation.md)
 - [agent-browser commands reference](./agent-browser-commands.md)
-- [`examples/web2skill-agent-browser/`](../examples/web2skill-agent-browser/) — full worked example
+- [`w2s/examples/web2skill-agent-browser/`](../../w2s/examples/web2skill-agent-browser/) — worked example of a comprehensive reference compiled using agent-browser

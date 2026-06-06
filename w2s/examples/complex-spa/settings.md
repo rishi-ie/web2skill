@@ -74,34 +74,6 @@ requires:
 - **note:** only enabled if there are unsaved changes; some
   panels autosave (toggle switches)
 
-## Workflows
-
-### Open a settings category
-
-1. Confirm on route `/settings/<category>` (or `/settings` for
-   the default, which is Profile)
-2. Click the `settings-nav-item` for the desired category
-3. Verify: URL changes to `/settings/<category>`, the
-   `settings-panel` content updates
-
-### Edit a field and save
-
-1. Confirm on route `/settings/<category>`
-2. Click into the desired field (text input, textarea, etc.)
-3. Make the change
-4. Click `panel-save-btn` (or the panel may autosave —
-   `panel-save-status` will read "Saved" when done)
-5. Verify: `panel-save-status` reads "Saved" and the new
-   value persists on reload
-
-### Toggle a notification preference
-
-1. Confirm on route `/settings/notifications`
-2. Click the toggle switch for the desired notification type
-3. The change autosaves immediately; `panel-save-status` reads
-   "Saved"
-4. Verify: the toggle remains in the new position on reload
-
 ## Edge cases
 
 - **Unsaved changes warning:** if the user navigates away from

@@ -121,20 +121,22 @@ def _is_element_ref(text: str) -> bool:
     return bool(re.match(r"^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$", text.strip()))
 
 
-def extract_workflow_refs(body: str) -> set[str]:
-    """Find element refs used inside the ## Workflows section only."""
+def extract_inventory_refs(body: str) -> set[str]:
+    """Find element refs used anywhere in the body (prose and inventory).
+
+    Excludes refs that appear inside a `contains:` line, since those are
+    declared as child refs of a container and don't need to also be
+    top-level elements.
+    """
     refs = set()
-    in_workflows = False
     for line in body.splitlines():
-        if re.match(r"^##\s+workflows?", line, re.IGNORECASE):
-            in_workflows = True
-        if in_workflows and re.match(r"^##\s+", line):
-            break
-        if in_workflows:
-            for m in re.finditer(r"`([^`]+)`", line):
-                ref = m.group(1).strip()
-                if _is_element_ref(ref):
-                    refs.add(ref)
+        if re.search(r"- \*\*contains:\*\*", line):
+            # Skip refs in contains: lines — those are child declarations
+            continue
+        for m in re.finditer(r"`([^`]+)`", line):
+            ref = m.group(1).strip()
+            if _is_element_ref(ref):
+                refs.add(ref)
     return refs
 
 
@@ -221,9 +223,17 @@ def lint_skill(file_path: Path, errors: Errors, known_skills: dict):
         errors.add(str(file_path), None, "'description' too short", "WARNING")
 
     sections = extract_sections(body)
-    for sec in ("page architecture", "element inventory", "workflows"):
+    for sec in ("page architecture", "element inventory"):
         if sec not in sections:
             errors.add(str(file_path), None, f"missing section: '## {sec}'", "ERROR")
+
+    # v2: forms and states are recommended only when relevant
+    has_form_elements = bool(re.search(r"\*\*type:\*\*\s*(input|textarea|select|button|checkbox|radio)", body))
+    has_modal_triggers = bool(re.search(r"\*\*type:\*\*\s*(modal|dropdown|popover|menu)", body, re.IGNORECASE))
+    if "forms" not in sections and has_form_elements:
+        errors.add(str(file_path), None, "missing section: '## Forms' (page has form-like elements)", "WARNING")
+    if "states" not in sections and has_modal_triggers:
+        errors.add(str(file_path), None, "missing section: '## States' (page has modal/dropdown triggers)", "WARNING")
 
     # Check name is kebab-case
     name = data.get("name", "")
@@ -244,15 +254,15 @@ def lint_skill(file_path: Path, errors: Errors, known_skills: dict):
                 errors.add(str(file_path), None, f"duplicate element ref: '{ref}'", "ERROR")
             seen[ref] = True
 
-    # Ref coverage: workflow refs must exist as top-level or child
+    # Ref coverage: all backticked refs should exist as top-level or child
     all_refs = extract_element_refs(body)
     child_refs = extract_child_refs(body)
-    workflow_refs = extract_workflow_refs(body)
+    inventory_refs = extract_inventory_refs(body)
     known = all_refs | child_refs
 
-    for ref in sorted(workflow_refs):
+    for ref in sorted(inventory_refs):
         if ref not in known:
-            errors.add(str(file_path), None, f"workflow references '{ref}' but it is not in the element inventory", "ERROR")
+            errors.add(str(file_path), None, f"references '{ref}' but it is not in the element inventory", "WARNING")
 
     check_selectors(body, errors, str(file_path))
 

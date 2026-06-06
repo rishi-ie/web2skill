@@ -63,35 +63,6 @@ requires:
 - **fallback:** `a:has-text("Sign up")` in the login card
 - **location:** below the submit button, centered
 
-## Workflows
-
-### Log in with email and password
-
-1. Confirm on route `/login` (with optional `?next=<url>`)
-2. Type the user's email into `email-input`
-3. Type the user's password into `password-input`
-4. Click `submit-btn`
-5. Verify: URL changes to the `?next` value, or `/home` if no
-   `?next` is set
-6. If credentials are wrong, an inline error appears above the
-   form: "Invalid email or password" — report to the user, do
-   not retry automatically
-7. If the form is in a "submitting" state (button shows spinner),
-   wait for it to complete before reading state
-
-### Reset password
-
-1. Confirm on route `/login`
-2. Click `forgot-password-link`
-3. Verify: URL changes to `/forgot-password` (out of scope — the
-   user must complete the reset manually)
-
-### Navigate to signup
-
-1. Confirm on route `/login`
-2. Click `signup-link`
-3. Verify: URL changes to `/signup`
-
 ## Edge cases
 
 - **Rate limiting:** after 5 failed attempts in 10 minutes, the

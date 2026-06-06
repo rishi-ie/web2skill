@@ -54,7 +54,7 @@ async def main():
 asyncio.run(main())
 ```
 
-That's it. browser-use opens a real Chrome window (headed mode is the default for `Agent.run()`), reads the skill, follows the workflows, and the agent uses the element refs from the skill instead of improvising.
+That's it. browser-use opens a real Chrome window (headed mode is the default for `Agent.run()`), reads the reference, and the agent uses the element refs from the skill instead of improvising.
 
 ---
 
@@ -226,7 +226,7 @@ SYSTEM PROMPT (from browser-use defaults)
 USER: Star the web2skill repo on GitHub
 ```
 
-The agent reads the skill, sees the workflows and element refs, and uses them. When it needs to click a button, it does not "look at the page" from scratch — it looks up `Click \`new-issue-btn\`` in the skill and uses the selector recorded there.
+The agent reads the reference, sees the element inventory and edge cases, and uses them. When it needs to click a button, it does not "look at the page" from scratch — it looks up the element ref in the inventory and uses the selector recorded there.
 
 This is what makes w2s skills valuable: the agent skips the expensive "figure out the website" phase and goes straight to execution.
 
@@ -238,7 +238,7 @@ This is what makes w2s skills valuable: the agent skips the expensive "figure ou
 
 **Token cost.** A multi-route w2s skill can be 5,000-15,000 tokens. That is the upfront cost; subsequent runs of the same skill amortize it. The trade-off vs raw browser-use is: pay more per turn for context, pay less per turn for reasoning (the agent does not need to "discover" the site).
 
-**Skill freshness.** Sites change. If a workflow fails with a selector error, the skill is stale. Re-run w2s on the same URLs to refresh it. browser-use does not auto-heal skills — that is a v2 feature.
+**Reference freshness.** Sites change. If a selector error occurs, the reference is stale. Re-run w2s on the same URLs to refresh it. browser-use does not auto-heal references — that is a future feature.
 
 **Multiple skills at once.** If the user's task spans multiple sites (e.g. "copy this GitHub issue to Linear"), load both skills. Concatenate them in `extend_system_message`, separated by a clear header:
 

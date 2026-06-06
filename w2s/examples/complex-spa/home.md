@@ -65,31 +65,6 @@ requires:
   `activity-timestamp`, `activity-target-link` (when
   applicable)
 
-## Workflows
-
-### Open a team
-
-1. Confirm on route `/home`
-2. Click the `team-card-name` link for the desired team in
-   `teams-section`
-3. Verify: URL changes to `/<team>`, team view loads
-
-### Read recent activity
-
-1. Confirm on route `/home`
-2. Scroll to `activity-section` (may need to scroll the main
-   column if many teams are shown)
-3. Read `activity-item` rows top-to-bottom; each shows
-   `<user> <action> <target> <timestamp>`
-
-### Open an issue from recent activity
-
-1. Confirm on route `/home`
-2. Find the `activity-item` for the desired issue
-3. Click `activity-target-link` within that item
-4. Verify: URL changes to `/<team>/issue/<id>`, issue view
-   loads (load `issue.md` skill)
-
 ## Edge cases
 
 - **Welcome modal:** the first time a user lands on `/home`

@@ -77,27 +77,6 @@ requires:
 - **fallback:** `a:has-text("Log in")` in the signup card
 - **location:** below the submit button, centered
 
-## Workflows
-
-### Create a new account and team
-
-1. Confirm on route `/signup`
-2. Type the user's email into `email-input`
-3. Type a strong password (≥8 chars, mixed case, number) into
-   `password-input`
-4. Verify `password-strength` reads "Good" or "Strong" before
-   proceeding — if "Weak" or "Fair", strengthen the password
-5. Type the desired team name into `team-name-input`
-6. Click `submit-btn` (verify it is enabled first)
-7. Verify: URL changes to `/home` (with a welcome modal that
-   the agent can dismiss — see `home.md`)
-
-### Navigate to login
-
-1. Confirm on route `/signup`
-2. Click `login-link`
-3. Verify: URL changes to `/login`
-
 ## Edge cases
 
 - **Email already in use:** inline error below `email-input`:

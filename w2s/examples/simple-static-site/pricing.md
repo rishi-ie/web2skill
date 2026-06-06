@@ -70,37 +70,6 @@ requires:
 - **location:** FAQ section
 - **contains:** `faq-question`, `faq-answer`
 
-## Workflows
-
-### Read the Pro plan features
-
-1. Confirm on route `/pricing`
-2. Read `plan-pro-name`, `plan-pro-price`, and the items in
-   `plan-pro-features` for the bullet list
-3. If you need the detailed comparison, read the relevant rows
-   in `comparison-table` (the "Pro" column)
-
-### Start a Pro trial
-
-1. Confirm on route `/pricing`
-2. Click `plan-pro-cta`
-3. Verify: URL changes to `/signup?plan=pro`, page shows the
-   signup form pre-filled with plan=Pro
-
-### Start on the Free plan
-
-1. Confirm on route `/pricing`
-2. Click `plan-free-cta`
-3. Verify: URL changes to `/signup?plan=free`, page shows the
-   signup form pre-filled with plan=Free
-
-### Open an FAQ
-
-1. Confirm on route `/pricing`
-2. Click the relevant `faq-item` (specifically `faq-question`)
-3. Verify: the `faq-answer` for that item becomes visible (the
-   item expands)
-
 ## Edge cases
 
 - **Plan not specified in URL:** if the user lands on

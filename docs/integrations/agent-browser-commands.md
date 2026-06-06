@@ -1,6 +1,6 @@
-# agent-browser command reference for w2s
+# agent-browser command reference for w2s compilation
 
-Quick reference of agent-browser commands mapped to w2s workflow actions. See the [full docs](https://github.com/vercel-labs/agent-browser) for complete details.
+Quick reference of agent-browser commands useful when compiling w2s skills. See the [full docs](https://github.com/vercel-labs/agent-browser) for complete details.
 
 ---
 
@@ -239,7 +239,7 @@ echo '[["open","https://github.com/foo/bar"],["snapshot","-i"],["click","@e5"]]'
   | agent-browser batch --json
 ```
 
-The w2s bridge uses batch for workflow execution — the entire workflow is sent as one JSON array and executed sequentially.
+Useful for batch compilation — open a URL, snapshot, click several elements in sequence without re-spawning the CLI.
 
 ---
 
@@ -265,23 +265,23 @@ Restores a saved session.
 agent-browser session load github-auth
 ```
 
-Used by w2s workflows that require authentication — save the session after logging in once, then load it for subsequent runs.
+Used for sites that require authentication — save the session after manually logging in once, then load it for subsequent compilations.
 
 ---
 
-## Workflow example
+## Compilation example
 
-A complete w2s workflow expressed as agent-browser commands:
+A complete w2s compilation session using agent-browser commands:
 
 ```bash
 # Open the repo
 agent-browser open https://github.com/foo/bar
 
-# Snapshot to verify we're on the right page
+# Initial snapshot to discover the page
 agent-browser snapshot -i
 agent-browser url
 
-# Click the Issues tab (@e2 from the snapshot)
+# Click the Issues tab (@e2 from the snapshot) to navigate
 agent-browser click @e2
 
 # Wait for the issues list to load
@@ -291,25 +291,24 @@ agent-browser wait '[data-testid="issue-list"]'
 agent-browser snapshot -i
 # → @e5 is "New issue"
 
-# Click New issue
+# Click New issue to discover the modal
 agent-browser click @e5
 
-# Wait for the modal (URL changes)
+# Wait for the modal to open
 agent-browser wait @e8
 
-# Type the title
-agent-browser type @e10 "Bug: login fails on Safari"
-
-# Type the description
-agent-browser type @e11 "Steps to reproduce..."
-
-# Submit
-agent-browser click @e15
-
-# Verify the issue was created
-agent-browser wait '.issue-title'
+# Snapshot the modal contents
 agent-browser snapshot -i
+# → @e10 is the title input, @e11 is the body, @e15 is submit
+
+# Get the actual selectors for the w2s element inventory
+agent-browser evaluate "document.querySelector('[data-testid=\"new-issue-title\"]') ? '[data-testid=\"new-issue-title\"]' : 'input[name=\"title\"]'"
+
+# Close the modal (do not submit — destructive)
+agent-browser press Escape
 ```
+
+Note: do NOT click `@e15` (Submit) during compilation. Document it in the inventory with `destructive: true` and move on.
 
 ---
 

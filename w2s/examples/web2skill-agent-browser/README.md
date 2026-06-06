@@ -1,12 +1,9 @@
-# Example: w2s skill with agent-browser integration
+# Example: w2s reference compiled with agent-browser
 
-A worked example of a w2s skill that is optimized for execution through
-agent-browser. Shows the dual-format approach: standard w2s prose for
-general agents, plus agent-browser command sequences for direct execution.
-
-The example uses a fictional project management tool ("Harvest Grove") that
-is similar to the simple-static-site example but with agent-browser
-commands embedded in the workflows.
+A worked example of a w2s comprehensive page reference for a
+fictional project management tool ("Harvest Grove"). The
+reference was compiled using agent-browser's `snapshot -i`
+and `click` commands.
 
 ---
 
@@ -14,102 +11,61 @@ commands embedded in the workflows.
 
 ```
 w2s/examples/web2skill-agent-browser/
-├── README.md                    ← this file
-├── overview.md                  ← site map (same as simple-static-site)
-├── home.md                     ← homepage skill with agent-browser commands
-├── login.md                    ← login skill with agent-browser commands
-├── w2s-runner.sh               ← the runtime bridge script
-└── skill-commands.md            ← extracted agent-browser command sequences
+├── README.md     ← this file
+├── overview.md   ← site map (one per domain)
+├── home.md       ← comprehensive reference for the homepage
+└── login.md      ← comprehensive reference for the login page
 ```
 
 ---
 
-## The dual-format approach
+## What the reference contains
 
-Each `SKILL.md` in this example has:
+Each `*.md` file is a comprehensive page reference, not a
+task manual. It documents:
 
-1. **Standard w2s section** (prose workflows) — for agents that read
-   natural language
-2. **Agent Browser Commands section** — literal `agent-browser`
-   commands for direct execution
+- **Page architecture** — header, hero, footer, layout
+- **Element inventory** — every button, link, input, with
+  selector, type, location, and `action:` describing what
+  activating it does
+- **States** — modals, dropdowns, hover-revealed, accordions
+- **Forms** — every field, validation, submit behavior
+- **Edge cases** — empty states, errors, rate limits, auth
+  walls
+
+It does **not** contain workflows. Workflow generation is a
+separate downstream project. The reference is a complete
+description of what the page offers; the runtime decides what
+to do with it.
+
+---
+
+## What the `ab-ref` field is
+
+Some elements in the inventory have an `ab-ref:` line. This
+records the exact line from the agent-browser snapshot that
+was used during compilation:
 
 ```markdown
-## Workflows
+### `hero-cta-signup`
 
-### Log in
-
-1. Confirm on route `/login`
-2. Type the user's email into `email-input`
-3. Type the password into `password-input`
-4. Click `submit-btn`
-5. Verify: URL changes to `/home`
-
-## Agent Browser Commands
-
-### Log in
-
-agent-browser open https://harvestgrove.com/login
-agent-browser type @e3 "user@example.com"
-agent-browser type @e4 "password123"
-agent-browser click @e5
-agent-browser wait --selector "#dashboard"
-agent-browser url
-# Should be https://harvestgrove.com/home
+- **type:** link
+- **selector:** `[data-testid="hero-cta-signup"]`
+- **fallback:** `a:has-text("Get started")` in the hero section
+- **location:** hero section, right side, primary button
+- **action:** navigates to /signup
+- **ab-ref:** "@e7  link  "Get started""
 ```
 
-The second section is what `w2s-runner.sh` reads and executes.
+The `ab-ref` is optional metadata. It is useful for debugging
+and for any downstream tool that wants to map back to
+agent-browser's runtime refs.
 
 ---
 
-## The runtime bridge
+## Compiling this example
 
-`w2s-runner.sh` is the glue between a w2s skill and agent-browser.
-It:
-
-1. Takes a skill directory and a goal (the task to perform)
-2. Finds the relevant SKILL.md file (matching the current URL)
-3. Reads the **Agent Browser Commands** section
-4. Executes each command via agent-browser
-5. Reports success or failure
-
-Usage:
-
-```bash
-# Set up
-chmod +x w2s-runner.sh
-SKILLS_DIR=~/.claude/skills/harvestgrove.com
-SKILL_DIR="$SKILLS_DIR/home"
-
-# Run a task
-./w2s-runner.sh "$SKILL_DIR" "Navigate to the home page"
-./w2s-runner.sh "$SKILL_DIR" "Log in and go to home"
-```
-
-The script exits with the same codes as agent-browser:
-- `0` = success
-- `1` = element not found
-- `2` = navigation failed
-- `3` = timeout
-
----
-
-## What makes this agent-browser optimized
-
-1. **Element refs are mapped to @eN.** The skill records which @eN each
-   element is in the snapshot. agent-browser uses @eN directly.
-2. **Batch commands.** Multi-step workflows are sent as JSON arrays
-   to `agent-browser batch --json` for efficiency.
-3. **Session persistence.** The runner saves the session after auth
-   (`agent-browser session save harvestgrove`) so subsequent runs
-   don't need to log in again.
-4. **Snapshot-first verification.** Every step that changes the page
-   is followed by a `snapshot -i` to verify state.
-5. **Fallback selectors.** If an @eN fails, the script falls back to
-   CSS selectors via `agent-browser find`.
-
----
-
-## Trying it out
+To compile a similar reference for a real site:
 
 1. Install agent-browser:
    ```bash
@@ -117,51 +73,46 @@ The script exits with the same codes as agent-browser:
    agent-browser install
    ```
 
-2. Start a session:
+2. Open the site and snapshot:
    ```bash
-   agent-browser open https://harvestgrove.com
+   agent-browser open https://real-site.com/home
+   agent-browser snapshot -i
    ```
+   Note every `@eN` and what it points to.
 
-3. Run a workflow:
+3. Click every interactive element, snapshot the resulting
+   state, and document the elements you find. Skip destructive
+   buttons (submit, publish, delete, pay, send, post) — see
+   `w2s/SKILL.md` Step 2.
+
+4. For forms, snapshot the form fields, document each one with
+   its type, label, validation rules, and required/optional
+   status.
+
+5. For modals/dropdowns, record the trigger, dismiss behavior,
+   and what's inside.
+
+6. Write the reference using the schema in `w2s/format-spec.md`.
+
+7. Validate:
    ```bash
-   cd w2s/examples/web2skill-agent-browser
-   ./w2s-runner.sh home "Show me the home page"
+   python3 w2s/validate.py ~/.claude/skills/<domain> --warnings
    ```
-
-4. Run the login workflow:
-   ```bash
-   ./w2s-runner.sh login "Log in with test@example.com / password123"
-   ```
-
-The runner will execute the agent-browser commands and report the result.
 
 ---
 
-## Adapting for real sites
+## Reading this reference
 
-For a real site, the process is:
+The compiled reference is meant to be read by an agent (or a
+downstream workflow generator) that needs to know what the
+page offers. The agent looks up element refs in the inventory
+to find selectors, types, and locations.
 
-1. **Compile** using agent-browser's snapshot to record elements:
-   ```bash
-   agent-browser open https://real-site.com
-   agent-browser snapshot -i
-   # Note the @eN for each element
-   ```
+Example: an agent that needs to navigate to the signup page
+finds `hero-cta-signup` in the home reference, reads its
+selector (`[data-testid="hero-cta-signup"]`), and uses that
+selector with whatever browser tool it has.
 
-2. **Author** the skill with both prose and agent-browser commands:
-   - Record @eN refs in the element inventory
-   - Write workflows in prose
-   - Write the same workflows as agent-browser command sequences
-
-3. **Run** using `w2s-runner.sh`:
-   ```bash
-   ./w2s-runner.sh <skill-dir> "<goal>"
-   ```
-
-The `w2s-runner.sh` is generic — it works with any w2s skill that has
-an **Agent Browser Commands** section. The section is just markdown
-under an `## Agent Browser Commands` heading containing indented
-bash-style commands prefixed with `agent-browser`.
-
-See `home.md` and `login.md` for the full skill format with embedded
-agent-browser commands. See `w2s-runner.sh` for the runtime implementation.
+The reference makes no assumption about which browser tool
+will execute the actions. It just describes the page
+exhaustively.

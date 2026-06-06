@@ -66,28 +66,63 @@ requires:
 - **type:** static text (only present if URL has `?plan=...`)
 - **selector:** `[data-testid="signup-plan-indicator"]`
 - **location:** below the heading, above the form fields
+- **action:** read-only; shows selected plan ("You selected:
+  Pro" or "You selected: Free")
 
-## Workflows
+### `error-banner`
 
-### Sign up with email and password
+- **type:** static text (displayed conditionally)
+- **selector:** `[data-testid="signup-error"]`
+- **location:** above the form, red text
+- **action:** read-only; displays error message
 
-1. Confirm on route `/signup` (or `/signup?plan=...`)
-2. Type the user's email into `email-input`
-3. Type the desired password into `password-input`
-4. Click `submit-btn`
-5. Verify: page redirects to `app.harvestgrove.com/onboarding`
-   (this is OUT OF SCOPE for this skill — the agent's job ends
-   at "form submitted successfully")
-6. If the email is already in use, the page shows an inline
-   error below `email-input` reading "An account with this
-   email already exists" — the agent should report this to the
-   user and stop
+## Forms
 
-### Navigate to login from signup
+**`signup-form`** (defined in Element inventory)
 
-1. Confirm on route `/signup`
-2. Click `login-link`
-3. Verify: URL changes to `/login`
+- **trigger:** page load (signup form is the only thing on the page)
+- **submit-btn:** `submit-btn` (destructive)
+- **fields:**
+  - `email-input` — text, required, accepts email format
+  - `password-input` — password, required, min 8 chars
+- **validation:**
+  - Empty email shows "Email is required" below `email-input`
+  - Invalid email format shows "Please enter a valid email"
+  - Empty password shows "Password is required" below
+    `password-input`
+  - Password < 8 chars shows "Password must be at least 8
+    characters"
+- **on success:** redirects to `app.harvestgrove.com/onboarding`
+  (out of scope for this skill)
+- **on error:** stays on `/signup`, shows `error-banner` above
+  the form
+
+## States
+
+### `plan-pre-selected`
+
+- **trigger:** URL contains `?plan=pro` or `?plan=free`
+- **dismiss:** N/A — persists for the duration of the page
+- **contains:** `plan-indicator` showing the selected plan
+- **notes:** the new account inherits the selected plan
+
+### `error-state`
+
+- **trigger:** validation error on submit (e.g. duplicate email)
+- **dismiss:** correct the field OR navigate away
+- **contains:** `error-banner` with the error message
+- **notes:** "An account with this email already exists" is
+  shown for duplicate emails
+
+### `rate-limited-state`
+
+- **trigger:** more than 5 failed attempts from same IP in 10
+  minutes
+- **dismiss:** wait for the rate limit window to expire
+- **contains:** `error-banner` with "Too many attempts. Please
+  try again later."
+- **notes:** runtime agents should stop and report to the user
+  when this state is detected
 
 ## Edge cases
 

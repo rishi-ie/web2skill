@@ -82,22 +82,6 @@ requires:
 - **fallback:** `nav a:has-text("Log in")`
 - **location:** header, right side
 
-## Workflows
-
-### Navigate to pricing
-
-1. Confirm on route `/`
-2. Click `nav-pricing` (or `hero-cta-pricing` from the hero
-   section)
-3. Verify: URL changes to `/pricing`, page shows pricing content
-
-### Navigate to signup
-
-1. Confirm on route `/`
-2. Click `nav-signup` (or `hero-cta-signup` from the hero, or
-   `final-cta-signup` from the bottom CTA)
-3. Verify: URL changes to `/signup`, page shows the email form
-
 ## Edge cases
 
 - None. Static site with no dynamic state.

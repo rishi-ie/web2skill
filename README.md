@@ -1,18 +1,25 @@
 # web2skill (`w2s`)
 
-**Turn any website into a reusable AI agent skill.**
+**Turn any website into a comprehensive page reference for AI agents.**
 
-`w2s` is a skill that makes skills. Load it into your AI coding agent (Claude Code, Codex, Cursor, etc.), point it at a website, and it produces a structured folder of `SKILL.md` files that any agent can read to navigate that website like a human would.
+`w2s` is a skill that produces skills. Load it into your AI coding
+agent (Claude Code, Codex, Cursor, etc.), point it at a website,
+and it produces a structured folder of `SKILL.md` files that
+documents every element, every state, every form, and every edge
+case of the site.
 
 ```
-You:   "Compile github.com for issue management"
-Agent: *uses w2s* → produces a github.com skill
+You:   "Compile github.com"
+Agent: *uses w2s* → produces a github.com page reference
 
-You:   "Close issue #42 on foo/bar"
-Agent: *reads the github.com skill* → navigates and closes it
+You:   (later) "I want to close issue #42"
+Agent: *reads the github.com reference* → knows exactly where the
+       close button is, what state the page is in, what could go
+       wrong
 ```
 
-That's the whole idea.
+The output is a **reference**, not a recipe. Workflow generation
+is a separate downstream project that reads this reference.
 
 ---
 
@@ -58,10 +65,12 @@ What it does: detects your platform, clones the repo, copies the skill into your
 - [How it works](#how-it-works)
 - [Installation](#installation)
 - [Usage](#usage)
-- [The skill format](#the-skill-format)
-- [Running compiled skills](#running-compiled-skills)
+- [The reference format](#the-reference-format)
+- [Using the compiled reference](#using-the-compiled-reference)
+- [Compiling with agent-browser](#compiling-with-agent-browser)
 - [Examples](#examples)
 - [Project structure](#project-structure)
+- [What's next: workflow generation](#whats-next-workflow-generation)
 - [What w2s does NOT do](#what-w2s-does-not-do)
 - [Contributing](#contributing)
 - [License](#license)
@@ -80,7 +89,7 @@ Today, asking an AI agent to do something on a website means the agent has to:
 
 That's slow, expensive (lots of LLM tokens), and flaky (the agent gets confused by noise).
 
-`w2s` flips this. The expensive work — figuring out where everything is on a website — happens **once**, when you compile the site. The result is a folder of `SKILL.md` files: compact, structured instruction manuals the agent reads in seconds. After that, every interaction with that website is fast, cheap, and reliable.
+`w2s` flips this. The expensive work — figuring out where everything is on a website — happens **once**, when you compile the site. The result is a folder of `SKILL.md` files: comprehensive references that document every element, every state, every form, and every edge case. The agent reads the reference once and knows exactly what the page offers.
 
 ### Who is this for?
 
@@ -112,20 +121,23 @@ Ask your agent:
 
 ```
 Compile https://github.com/foo/bar and https://github.com/foo/bar/issues
-into a skill.
+into a reference.
 ```
 
-The agent will visit the URLs, generate the skill, and save it to `~/.claude/skills/github.com/`.
+The agent will visit the URLs, click every interactive element,
+document everything, and save the reference to
+`~/.claude/skills/github.com/`.
 
-### 3. Use the skill
+### 3. Use the reference
 
-Either ask your agent:
+Pass the reference as context to any LLM agent:
 
 ```
-Star the web2skill repo on GitHub.
+Read ~/.claude/skills/github.com/ and star the web2skill repo.
 ```
 
-Or run it programmatically with [browser-use](./docs/integrations/browser-use.md):
+The agent reads the reference, looks up the star button's
+selector in the element inventory, and uses it.
 
 ```python
 import asyncio
@@ -134,11 +146,11 @@ from browser_use import Agent
 from langchain_openai import ChatOpenAI
 
 async def main():
-    skill = Path("~/.claude/skills/github.com").expanduser().read_text()
+    ref = Path("~/.claude/skills/github.com").expanduser().read_text()
     agent = Agent(
         task="Star the web2skill repo on GitHub",
         llm=ChatOpenAI(model="gpt-4o"),
-        extend_system_message=skill,
+        extend_system_message=ref,
     )
     result = await agent.run()
     print(result)
@@ -157,10 +169,10 @@ A real Chrome window opens and you can watch the agent work.
 ```
 w2s/
 ├── SKILL.md              ← the entry point the agent reads first
-├── format-spec.md        ← exact schema for output skills
-├── distillation.md       ← how to extract a compact page map
+├── format-spec.md        ← exact schema for output references
+├── distillation.md       ← how to extract a comprehensive page map
 ├── route-grouping.md     ← how to group URLs into route families
-├── validate.py           ← lint a compiled skill against the format spec
+├── validate.py           ← lint a compiled reference against the format spec
 └── examples/             ← worked examples
     ├── simple-static-site/
     ├── complex-spa/
@@ -170,12 +182,12 @@ w2s/
 When you ask your agent to compile a website, the agent follows a 7-step methodology:
 
 1. **Extract the URL list** — parse the user's request into URLs
-2. **Distill each URL** — observe the page in its initial state AND click every interactive element to trigger modals, dropdowns, hover-revealed actions, etc.
+2. **Distill each URL** — observe the page in its initial state AND click every interactive element to trigger modals, dropdowns, hover-revealed actions, etc. (excluding destructive buttons)
 3. **Group URLs into route families** — URLs that share a structure share a file
-4. **Write one `SKILL.md` per route family** — page architecture, element inventory, workflows, edge cases, and optionally agent-browser commands
+4. **Write one `SKILL.md` per route family** — comprehensive reference: page architecture, element inventory, forms, states, edge cases
 5. **Write the `overview.md`** — site map, route index, site-wide patterns
-6. **Save the skills** — to the agent's skills directory
-7. **Self-check** — verify every ref in workflows exists in the element inventory, every match pattern is real, selectors are stable, and all agent-browser commands are syntactically valid
+6. **Save the reference** — to the agent's skills directory
+7. **Self-check** — verify every ref in prose exists in the element inventory, every match pattern is real, selectors are stable, no destructive element was clicked
 
 The output looks like this:
 
@@ -183,10 +195,15 @@ The output looks like this:
 ~/.claude/skills/
 └── github.com/
     ├── overview.md       ← site map + route index
-    ├── repo.md           ← instructions for /:owner/:repo
-    ├── issues.md         ← instructions for /:owner/:repo/issues
+    ├── repo.md           ← comprehensive reference for /:owner/:repo
+    ├── issues.md         ← comprehensive reference for /:owner/:repo/issues
     └── ...
 ```
+
+Each per-route file is a **reference**, not a workflow. The
+downstream workflow generator reads these references and decides
+what to do at runtime. w2s's job ends at "document what the page
+offers."
 
 ---
 
@@ -232,9 +249,9 @@ You can also keep w2s anywhere and point your agent at it. The skill is self-con
 
 Once installed, just talk to your agent naturally. The w2s skill triggers on phrases like:
 
-- "Compile `https://github.com/foo/bar` into a skill"
-- "Use w2s to make a skill for managing Linear issues"
-- "Turn `https://app.notion.so` into a skill so I can create pages"
+- "Compile `https://github.com/foo/bar`"
+- "Use w2s to document Linear for me"
+- "Turn `https://app.notion.so` into a reference"
 - "w2s `https://example.com/pricing` and `https://example.com/signup`"
 
 ### What happens when you ask for a compilation
@@ -242,23 +259,24 @@ Once installed, just talk to your agent naturally. The w2s skill triggers on phr
 The agent will:
 
 1. **Confirm the URL list** — if you only gave one URL or a domain, ask you for 2-3 more to identify the route family
-2. **Ask about the goal** — what should the agent be able to DO on this site once the skill is ready?
-3. **Ask about auth** — will you be logged in when using the skill? Auth walls change the available features.
-4. **Visit each URL and compile** — this takes 1-3 minutes per URL
-5. **Save the skill** to the agent's skills directory
-6. **Tell you the skill is ready** and how to use it
+2. **Ask about the goal** — what should the agent be able to do on this site once the reference is ready?
+3. **Ask about auth** — will you be logged in when using the reference? Auth walls change the available features.
+4. **Visit each URL and compile** — opens with agent-browser, clicks every element, captures every state. This takes 1-3 minutes per URL.
+5. **Save the reference** to the agent's skills directory
+6. **Tell you the reference is ready** and how to use it
 
 ### After compilation
 
-You can use the compiled skill in two ways:
+You can use the compiled reference in two ways:
 
 **1. Through your agent** (easiest):
 
 ```
-Star the web2skill repo on GitHub.
+Read ~/.claude/skills/github.com/ and star the web2skill repo.
 ```
 
-The agent reads the github.com skill, follows the workflow, and does the action. The user sees the browser window if they're using a visible browser tool.
+The agent reads the reference, looks up the star button in the
+element inventory, and uses its selector.
 
 **2. Programmatically with browser-use** (most flexible):
 
@@ -315,13 +333,14 @@ graph TD
 - Auth: "Sign in" link at top-right when logged out
 ```
 
-### `SKILL.md` (per route) — a single page
+### `SKILL.md` (per route) — a comprehensive reference
 
 ```markdown
 ---
 name: github-issues
 description: |
-  Read, filter, create, and close issues on a GitHub repository.
+  Read, filter, and create issues on a GitHub repository.
+  Documents every button, modal, and form on the issues pages.
 match:
   - /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues(\/.*)?$/
 requires:
@@ -342,6 +361,7 @@ requires:
 - selector: `a[href$="/issues/new"]`
 - fallback: text="New issue"
 - location: top-right of main column, green
+- action: navigates to /owner/repo/issues/new
 
 ### `issue-row` (repeatable)
 - type: list item
@@ -351,14 +371,20 @@ requires:
   - `issue-number` (text, e.g. "#1234")
   - `issue-labels` (list)
 
-## Workflows
+## Forms
 
-### Create a new issue
-1. Confirm on route /owner/repo/issues
-2. Click `new-issue-btn`
-3. Fill in title (input labeled "Title")
-4. Fill in body (textarea labeled "Leave a comment")
-5. Click "Submit new issue"
+**`new-issue-form`** (defined in Element inventory)
+- trigger: new-issue-btn
+- submit-btn: submit-new-issue-btn (destructive)
+- fields: title-input (required), body-textarea (optional)
+- on success: navigates to /owner/repo/issues/N
+
+## States
+
+### `filter-dropdown`
+- trigger: filter-btn
+- dismiss: click outside or Escape
+- contains: filter-author-input, filter-label-select, filter-apply-btn
 
 ## Edge cases
 - Empty state: "No issues" with "New issue" CTA
@@ -369,32 +395,42 @@ For the full schema — every required field, every section, every validation ru
 
 For the full methodology — how the agent should distill, group, and document — see [`w2s/SKILL.md`](./w2s/SKILL.md) (the w2s entry point).
 
+**w2s produces references, not workflows.** The output is a
+complete description of what the page offers. Workflow
+generation is a separate downstream project.
+
 ---
 
-## Running compiled skills
+## Using the compiled reference
 
-Compiling a skill produces a folder of markdown. To actually **run** it (have an agent follow the workflows against a live browser), you need a browser-use client or agent-browser.
+Compiling a site produces a folder of markdown — a comprehensive
+reference. The reference itself is the deliverable. The
+**downstream workflow generator** is what actually drives a
+browser to do things on the site.
 
-### Option 1: browser-use (Python)
+**This separation is intentional.** w2s captures everything the
+page offers in a stable, structured form. Workflow generation is
+a separate concern that can be done by a different tool, a
+different agent, or at runtime.
 
-The recommended one is [**browser-use**](https://github.com/browser-use/browser-use) — open source, Python, headed mode by default, supports a custom system prompt.
-
-A w2s skill is just markdown with YAML frontmatter. browser-use accepts a custom system prompt. You read the skill, pass it as the system prompt, the agent uses it. That's the whole integration.
-
-**The minimum:**
+**Reading the reference at runtime:** any agent that can read
+markdown can use a w2s reference. Pass the files as context,
+the agent looks up element refs in the inventory, gets the
+selector, and uses it with whatever browser tool it has.
 
 ```python
+# Example: feeding a w2s reference into an LLM agent
 import asyncio
 from pathlib import Path
 from browser_use import Agent
 from langchain_openai import ChatOpenAI
 
 async def main():
-    skill = Path("~/.claude/skills/github.com").expanduser().read_text()
+    ref = Path("~/.claude/skills/github.com").expanduser().read_text()
     agent = Agent(
         task="Star the web2skill repo on GitHub",
         llm=ChatOpenAI(model="gpt-4o"),
-        extend_system_message=skill,
+        extend_system_message=ref,
     )
     result = await agent.run()
     print(result)
@@ -402,41 +438,27 @@ async def main():
 asyncio.run(main())
 ```
 
-You will see Chrome open and watch the agent navigate using the skill.
+The agent reads the reference, sees the `new-issue-btn` element
+with its selector `[data-testid="hero-cta-signup"]`, and uses
+that selector instead of improvising.
 
 **Full guide:** [`docs/integrations/browser-use.md`](./docs/integrations/browser-use.md)
 
-### Option 2: agent-browser (CLI)
+## Compiling with agent-browser
 
-[**agent-browser**](https://github.com/vercel-labs/agent-browser) is a Rust-based CLI for browser automation designed specifically for AI agents. It uses an **accessibility tree with numbered `@eN` refs** (~200-400 tokens instead of full DOM), has a built-in **skills system**, and is free and open source.
-
-w2s skills optimized for agent-browser include an `## Agent Browser Commands` section that contains literal `agent-browser` CLI commands. The `w2s-runner.sh` script executes them directly:
+For the **compile-time** side, [**agent-browser**](https://github.com/vercel-labs/agent-browser) is the recommended tool. Its accessibility-tree snapshots (`snapshot -i`) and `@eN` element refs map directly to w2s's element inventory format.
 
 ```bash
-# Install
-npm i -g agent-browser && agent-browser install
+npm i -g agent-browser
+agent-browser install
 
-# Run a w2s skill
-cd w2s/examples/web2skill-agent-browser
-./w2s-runner.sh home "Show me the home page"
+# Open the site, snapshot, click every element
+agent-browser open https://github.com/foo/bar
+agent-browser snapshot -i
+# ... click every @eN, document the result ...
 ```
 
-agent-browser also works as the **distillation engine** — use `agent-browser snapshot -i` to compile a site, then write the w2s skill.
-
-**Full guide:** [`docs/integrations/agent-browser.md`](./docs/integrations/agent-browser.md)
-
-### Which should you use?
-
-| | browser-use | agent-browser |
-|---|---|---|
-| **Interface** | Python library | CLI |
-| **Best for** | LLM-driven agents (Claude Code, Codex) | Direct execution, scripted automation |
-| **Token efficiency** | Uses full DOM/accessibility tree | Compact @eN refs (~200-400 tokens) |
-| **Observability** | Limited | Built-in dashboard, screenshots, streaming |
-| **Skills system** | No (w2s provides it) | Yes (built-in) |
-| **Setup** | `pip install browser-use` | `npm i -g agent-browser` |
-
-**Both integrations:** w2s skills are portable — the same skill works with both tools. — covers installation, a `load_skill()` helper that picks the right `SKILL.md` for the task, headed vs headless mode, multi-skill tasks, and gotchas.
+**Full guide:** [`docs/integrations/agent-browser.md`](./docs/integrations/agent-browser.md) — covers installation, a `load_skill()` helper that picks the right `SKILL.md` for the task, headed vs headless mode, multi-skill tasks, and gotchas.
 
 **Other integrations** are also possible (Stagehand, raw Playwright, Anthropic Computer Use) — w2s skills are just markdown, so any agent that can read a system prompt can use them.
 
@@ -465,8 +487,8 @@ web2skill/
 ├── README.md                       ← you are here
 ├── w2s/                            ← the w2s skill (load this into your agent)
 │   ├── SKILL.md                    ← entry point, the 7-step methodology
-│   ├── format-spec.md              ← exact schema for output SKILL.md files
-│   ├── distillation.md             ← how to extract a compact page map
+│   ├── format-spec.md              ← exact schema for output references
+│   ├── distillation.md             ← how to extract a comprehensive page map
 │   ├── route-grouping.md           ← how to group URLs into route families
 │   └── examples/
 │       ├── simple-static-site/     ← 4-route worked example
@@ -478,69 +500,27 @@ web2skill/
 
 ---
 
-## v2: Executable workflows
+## What's next: workflow generation
 
-v1 produces **reference manuals** — element inventories and prose workflows that an LLM reads to decide what to do. Useful and token-efficient, but still needs an LLM in the loop at runtime.
+w2s produces a comprehensive page reference. The next step is a
+**separate downstream project** that reads w2s references and
+generates executable workflows from them.
 
-v2 produces **executable scripts** — standalone workflow files that agent-browser runs directly without an LLM making decisions. Deterministic. Pre-resolved element refs. Click-and-run.
+The reference gives the workflow generator everything it needs:
+- The element inventory (every button, link, input, with
+  selectors and types)
+- The forms (every field, validation, submit behavior)
+- The states (every modal, dropdown, hover-revealed element)
+- The edge cases (errors, empty states, auth walls)
 
-```
-v1 skill
-├── overview.md
-├── home.md
-│   ├── Element inventory     ← where things are
-│   └── Workflows (prose)     ← LLM reads and decides
-└── ...
+The generator reads this and produces action sequences the
+runtime can execute. The reference is the source of truth; the
+generator decides what to do with it.
 
-v2 skill (adds workflows/)
-├── overview.md
-├── home.md
-│   ├── Element inventory
-│   └── Workflows (prose)
-└── workflows/                   ← NEW: standalone executable
-    ├── home-nav-pricing.md      ← agent-browser runs directly
-    ├── home-nav-signup.md
-    └── login-default.md
-```
-
-Each `workflows/*.md` is a deterministic sequence:
-
-```markdown
----
-name: home-nav-pricing
-trigger: "Show me the pricing page"
----
-agent-browser open https://harvestgrove.com/
-agent-browser snapshot -i
-agent-browser click @e4
-agent-browser wait --selector ".pricing-content"
-agent-browser url
-# expected: https://harvestgrove.com/pricing
-```
-
-agent-browser reads this, executes, verifies the outcome. No LLM at runtime.
-
-**Pipeline:**
-
-```
-Compile time: agent-browser (snapshot + click every element) → skill with element inventory + workflows/
-Runtime:      workflows/*.md → w2s-runner.sh → agent-browser → done
-```
-
-**What changes in v2:**
-- Workflows become first-class (`workflows/` subdirectory, one file per action)
-- `trigger` field replaces prose (what the user says to invoke it)
-- Pre-resolved agent-browser commands in every workflow
-- Outcome verification at the end of each workflow (URL, element visible, text present)
-- LLM only at compile time — execution path is skill → agent-browser directly
-
-**What stays the same:**
-- Compilation (agent-browser as distillation engine)
-- Element inventory (still needed to author workflows at compile time)
-- Skills directory structure
-- agent-browser as the runtime
-
-Implementation: auto-generate `workflows/` from element inventory at compile time. Verify format with existing validator.
+This separation is what makes w2s useful: the reference can be
+reused by many downstream tools (workflow generators, test
+runners, accessibility auditors, LLM agents). The reference
+doesn't lock you into one runtime or one workflow style.
 
 ---
 
@@ -548,11 +528,25 @@ Implementation: auto-generate `workflows/` from element inventory at compile tim
 
 Be honest about scope. w2s does not:
 
-- **Self-heal broken skills.** If a site changes after compilation, workflows may fail. Re-run w2s to refresh. (A self-healing loop is on the roadmap.)
-- **Compile behind authentication automatically.** You need to be logged in during compilation. The agent cannot log in for you (no password to use).
-- **Handle every edge case of every site.** w2s works best on sites with stable, semantic HTML and `data-testid` attributes. Heavily SPAs with auto-generated class names produce weaker skills.
-- **Replace a domain expert.** A compiled skill captures the structure of a site. It does not capture institutional knowledge ("we never close issues on Fridays because of deploy windows").
-- **Run anywhere by itself.** w2s is the recipe. You need an agent to execute the recipe (Claude Code, Codex) and a browser-use client to run the output (browser-use, Playwright, etc.).
+- **Generate workflows.** The output is a reference, not a
+  recipe. Workflow generation is a separate downstream project.
+- **Self-heal broken references.** If a site changes after
+  compilation, the reference may be stale. Re-run w2s to refresh.
+- **Compile behind authentication automatically.** You need to be
+  logged in during compilation. The agent cannot log in for you
+  (no password to use).
+- **Handle every edge case of every site.** w2s works best on
+  sites with stable, semantic HTML and `data-testid` attributes.
+  Heavily SPAs with auto-generated class names produce weaker
+  references.
+- **Replace a domain expert.** A compiled reference captures the
+  structure of a site. It does not capture institutional
+  knowledge ("we never close issues on Fridays because of
+  deploy windows").
+- **Run anywhere by itself.** w2s is the recipe for compiling.
+  You need a browser tool (agent-browser recommended) during
+  compilation, and any LLM agent to use the reference at
+  runtime.
 
 ---
 

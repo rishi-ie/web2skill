@@ -24,7 +24,7 @@ requires:
     - **Yesterday** section
     - **This week** section
     - **Earlier** section
-  - Each group is a list of `notification-item` rows
+  - Each group is a list of notification-item rows
 
 ## Element inventory
 
@@ -77,36 +77,6 @@ requires:
     read)
 - **action:** clicking the row navigates to the related
   resource (issue, comment, etc.)
-
-## Workflows
-
-### Read all unread notifications
-
-1. Confirm on route `/inbox`
-2. For each `notification-item` with a visible
-   `notification-unread-dot`:
-   - Read `notification-text` to understand what happened
-   - Optionally click the row to navigate to the related
-     resource
-3. When done, click `mark-all-read-link`
-4. Verify: all `notification-unread-dot` elements disappear
-
-### Filter to mentions only
-
-1. Confirm on route `/inbox`
-2. Click `filter-dropdown`
-3. In the dropdown, click the "Mentions" option
-4. Verify: only `notification-item` rows where the
-   `notification-text` mentions the current user are shown
-
-### Open the related issue from a notification
-
-1. Confirm on route `/inbox`
-2. Find the desired `notification-item`
-3. Click anywhere on the row
-4. Verify: URL changes to the related resource (typically
-   `/<team>/issue/<id>`); load `issue.md` if navigating to an
-   issue
 
 ## Edge cases
 

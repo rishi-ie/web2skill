@@ -30,6 +30,8 @@ requires:
 - **type:** form
 - **selector:** `[data-testid="login-form"]`
 - **location:** centered in main column
+- **contains:** `email-input`, `password-input`, `submit-btn`,
+  `forgot-password-link`, `signup-link`
 - **ab-ref:** "@e3  form  "Log in to your account""
 
 ### `email-input`
@@ -38,6 +40,7 @@ requires:
 - **selector:** `[data-testid="login-email"]`
 - **fallback:** `input[type="email"]` inside `login-form`
 - **location:** first field in the form
+- **action:** accepts text input for user email
 - **ab-ref:** "@e4  textbox  "Email""
 
 ### `password-input`
@@ -46,6 +49,7 @@ requires:
 - **selector:** `[data-testid="login-password"]`
 - **fallback:** `input[type="password"]` inside `login-form`
 - **location:** second field in the form, below email
+- **action:** accepts masked text input for password
 - **ab-ref:** "@e5  textbox  "Password""
 
 ### `submit-btn`
@@ -54,6 +58,9 @@ requires:
 - **selector:** `[data-testid="login-submit"]`
 - **fallback:** `button[type="submit"]` inside `login-form`
 - **location:** below the password field, full-width
+- **action:** submits the login form; on success redirects to
+  app.harvestgrove.com or to `?redirect=<path>` if specified
+- **destructive:** true
 - **ab-ref:** "@e6  button  "Log in""
 
 ### `forgot-password-link`
@@ -62,6 +69,8 @@ requires:
 - **selector:** `[data-testid="login-forgot-password"]`
 - **fallback:** `a:has-text("Forgot password?")` inside `login-form`
 - **location:** right-aligned, below the password field
+- **action:** navigates to `/forgot-password` (out of scope for
+  this skill)
 - **ab-ref:** "@e7  link  "Forgot password?""
 
 ### `signup-link`
@@ -70,71 +79,67 @@ requires:
 - **selector:** `[data-testid="login-to-signup"]`
 - **fallback:** `a:has-text("Sign up")` inside `login-form`
 - **location:** below the submit button, small text
+- **action:** navigates to `/signup`
 - **ab-ref:** "@e8  link  "Sign up""
 
-## Workflows
+### `error-banner`
 
-### Log in with email and password
+- **type:** static text (displayed conditionally)
+- **selector:** `[data-testid="login-error"]`
+- **fallback:** `.login-error` (when visible)
+- **location:** above the form, red text
+- **action:** read-only; displays error message
+- **ab-ref:** "@e9  text  "Invalid email or password"" (when shown)
 
-1. Confirm on route `/login`
-2. Type the user's email into `email-input`
-3. Type the user's password into `password-input`
-4. Click `submit-btn`
-5. Verify: page redirects to `app.harvestgrove.com` (OUT OF SCOPE for this skill)
-6. If credentials are wrong, the page reloads with an error "Invalid email or password" above the form — report to the user, do not retry
+## Forms
 
-### Navigate to signup from login
+**`login-form`** (defined in Element inventory)
 
-1. Confirm on route `/login`
-2. Click `signup-link`
-3. Verify: URL changes to `/signup`
+- **trigger:** page load (login form is the only thing on the page)
+- **submit-btn:** `submit-btn` (destructive)
+- **fields:**
+  - `email-input` — text, required, accepts email format
+  - `password-input` — password, required, min 8 chars
+- **validation:**
+  - Empty email shows "Email is required" below `email-input`
+  - Empty password shows "Password is required" below
+    `password-input`
+  - Invalid email format shows "Please enter a valid email"
+- **on success:** redirects to `app.harvestgrove.com` (or to
+  `?redirect=<path>` if specified in the URL)
+- **on error:** stays on `/login`, shows `error-banner` above
+  the form with text "Invalid email or password"
 
-### Reset password
+## States
 
-1. Confirm on route `/login`
-2. Click `forgot-password-link`
-3. Verify: URL changes to `/forgot-password` (out of scope — user completes manually)
+### `error-state`
 
-## Agent Browser Commands
+- **trigger:** invalid credentials submission
+- **dismiss:** correct credentials OR navigate away
+- **contains:** `error-banner` with the error message
+- **notes:** page does NOT distinguish "no such user" from
+  "wrong password"
 
-### Log in with email and password
+### `rate-limited-state`
 
-```bash
-agent-browser open https://harvestgrove.com/login
-agent-browser snapshot -i
-
-# Type email
-agent-browser type @e4 "user@example.com"
-
-# Type password
-agent-browser type @e5 "password123"
-
-# Submit
-agent-browser click @e6
-
-# Wait for redirect — either app.harvestgrove.com or error message
-# Check URL after 3 seconds
-agent-browser url
-# If https://app.harvestgrove.com: success
-# If still on /login: check for error
-agent-browser snapshot -i
-# If @e9 contains "Invalid email or password": credentials wrong
-```
-
-### Navigate to signup from login
-
-```bash
-agent-browser open https://harvestgrove.com/login
-agent-browser snapshot -i
-agent-browser click @e8
-agent-browser wait --selector "#signup-form"
-agent-browser url
-# Should be https://harvestgrove.com/signup
-```
+- **trigger:** more than 5 failed login attempts in a short window
+- **dismiss:** wait for the rate limit window to expire
+- **contains:** `error-banner` with "Too many attempts. Please
+  try again later."
+- **notes:** runtime agents should stop and report to the user
+  when this state is detected
 
 ## Edge cases
 
-- **Validation errors:** empty email → "@e4 label shows 'Email is required'"; empty password → "@e5 label shows 'Password is required'"
-- **Wrong credentials:** error "Invalid email or password" appears above the form. The page does NOT distinguish between "no such user" and "wrong password."
-- **Rate limiting:** after 5 failed attempts, form shows "Too many attempts. Please try again later." Stop and report.
-- **Redirect after login:** if URL has `?redirect=<path>`, user goes there after login.
+- **Validation errors:** empty email → `email-input` shows
+  "Email is required" below; empty password → `password-input`
+  shows "Password is required" below
+- **Wrong credentials:** `error-banner` shows "Invalid email or
+  password" above the form
+- **Rate limiting:** after 5 failed attempts, `error-banner`
+  shows "Too many attempts. Please try again later." Stop and
+  report to the user.
+- **Redirect after login:** if URL has `?redirect=<path>`, user
+  is sent there after successful login (out of scope).
+- **Already-logged-in:** if user is already authenticated and
+  visits `/login`, redirects to `app.harvestgrove.com` automatically.

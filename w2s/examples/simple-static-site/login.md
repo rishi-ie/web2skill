@@ -67,33 +67,52 @@ requires:
 - **selector:** `[data-testid="login-to-signup"]`
 - **fallback:** `a:has-text("Sign up")` inside `login-form`
 - **location:** below the submit button, small text
+- **action:** navigates to `/signup`
 
-## Workflows
+### `error-banner`
 
-### Log in with email and password
+- **type:** static text (displayed conditionally)
+- **selector:** `[data-testid="login-error"]`
+- **location:** above the form, red text
+- **action:** read-only; displays error message
 
-1. Confirm on route `/login`
-2. Type the user's email into `email-input`
-3. Type the user's password into `password-input`
-4. Click `submit-btn`
-5. Verify: page redirects to `app.harvestgrove.com` (OUT OF
-   SCOPE for this skill)
-6. If credentials are wrong, the page reloads with an error
-   "Invalid email or password" above the form — report to the
-   user, do not retry automatically with a guessed password
+## Forms
 
-### Reset password
+**`login-form`** (defined in Element inventory)
 
-1. Confirm on route `/login`
-2. Click `forgot-password-link`
-3. Verify: URL changes to `/forgot-password` (out of scope for
-   this skill; the user must complete the reset manually)
+- **trigger:** page load (login form is the only thing on the page)
+- **submit-btn:** `submit-btn` (destructive)
+- **fields:**
+  - `email-input` — text, required, accepts email format
+  - `password-input` — password, required, min 8 chars
+- **validation:**
+  - Empty email shows "Email is required" below `email-input`
+  - Empty password shows "Password is required" below
+    `password-input`
+  - Invalid email format shows "Please enter a valid email"
+- **on success:** redirects to `app.harvestgrove.com` (or to
+  `?redirect=<path>` if specified in the URL)
+- **on error:** stays on `/login`, shows `error-banner` above
+  the form with text "Invalid email or password"
 
-### Navigate to signup from login
+## States
 
-1. Confirm on route `/login`
-2. Click `signup-link`
-3. Verify: URL changes to `/signup`
+### `error-state`
+
+- **trigger:** invalid credentials submission
+- **dismiss:** correct credentials OR navigate away
+- **contains:** `error-banner` with the error message
+- **notes:** page does NOT distinguish "no such user" from
+  "wrong password"
+
+### `rate-limited-state`
+
+- **trigger:** more than 5 failed login attempts in 10 minutes
+- **dismiss:** wait for the rate limit window to expire
+- **contains:** `error-banner` with "Too many attempts. Please
+  try again later."
+- **notes:** runtime agents should stop and report to the user
+  when this state is detected
 
 ## Edge cases
 
