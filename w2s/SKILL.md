@@ -89,6 +89,41 @@ For each URL in the list, use your browser tool to:
 7. Close each opened state before moving to the next, so you do
    not stack modals
 
+**Destructive actions are EXCLUDED from this click-everything rule.**
+
+Do NOT click buttons that mutate external state or have irreversible
+side effects. This includes (but is not limited to):
+
+- **Submit / publish / push** — "Submit", "Save", "Publish", "Push
+  changes", "Deploy", "Send", "Post", "Tweet", "Reply", "Confirm
+  delete"
+- **Destructive operations** — "Delete", "Remove", "Destroy",
+  "Drop", "Purge", "Trash", "Archive" (when irreversible)
+- **Payments / transfers** — "Pay", "Charge", "Transfer", "Buy",
+  "Subscribe", "Purchase"
+- **Account changes** — "Cancel subscription", "Close account",
+  "Revoke", "Disable 2FA", "Reset password" (when the reset
+  actually triggers an email)
+- **External actions** — anything that posts to social media, sends
+  an email, fires a webhook, or modifies a third-party system
+
+For these elements, document them as **observable but not
+exercised**:
+
+- Record the element in the inventory with its selector, label,
+  and location
+- Do NOT click it during compilation
+- Mark it with a `destructive: true` flag in the element inventory
+  (or note in the description that it is destructive)
+- Document the workflow in the skill, but flag it as
+  `requires user confirmation` — the runtime agent must surface
+  it to the user and wait for explicit approval before executing
+
+The skill must capture these elements so the runtime knows they
+exist, but compilation itself must not trigger them. A skill that
+accidentally pushed real changes during compilation would be
+catastrophic.
+
 What to extract (and how to identify stable selectors) is
 specified in `distillation.md`. The rules for documenting
 interaction states (modals, dropdowns, hover menus, accordions)
@@ -215,6 +250,10 @@ Bad questions (do not ask):
   see it, do not document it.
 - Do not save skills to a non-persistent directory.
 - Do not skip the self-check. A broken skill is worse than no skill.
+- **Do not click destructive buttons during compilation.** Submit,
+  publish, push, delete, pay, send, post — any button with
+  irreversible side effects must be observed, documented, and
+  flagged `destructive: true`, but NEVER clicked. See Step 2.
 
 ## Reference files
 

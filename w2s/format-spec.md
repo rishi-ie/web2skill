@@ -184,6 +184,13 @@ are kebab-case, descriptive, and unique within the file.
   "top-right of main column, green"
 - **contains:** `<list of child refs>` — only for container and
   repeatable types
+- **destructive:** `true` — only for buttons/links that trigger
+  irreversible side effects (submit, publish, push, delete, pay,
+  send, post, etc.). See the "Destructive actions" rule in
+  `SKILL.md` Step 2. Runtime agents MUST surface these to the user
+  and require explicit confirmation before executing. The skill
+  compiler documents them but MUST NOT click them during
+  compilation.
 ```
 
 Examples:
@@ -195,6 +202,16 @@ Examples:
 - **selector:** `a[href$="/issues/new"]`
 - **fallback:** text="New issue"
 - **location:** top-right of main column, green
+
+### `submit-new-issue-btn`
+
+- **type:** button
+- **selector:** `button[type="submit"][data-testid="issue-submit"]`
+- **fallback:** text="Submit new issue"
+- **location:** bottom of new-issue modal, right side
+- **destructive:** true
+
+### `delete-repo-btn`
 
 ### `issue-row`
 
@@ -260,6 +277,39 @@ Workflow rules:
 - Steps that type/fill say what to type: `Type "Hello" into
   \`comment-input\``.
 - The last step is almost always a verification — how does the
+  agent know it worked?
+
+### Destructive workflows
+
+Workflows that mutate external state, send messages, or have
+irreversible side effects MUST be flagged. The runtime agent
+surfaces these to the user and requires explicit confirmation
+before executing.
+
+Mark the workflow with `> ⚠️ DESTRUCTIVE` immediately after the
+heading, and prefix the final step with a confirmation gate:
+
+```markdown
+### Submit a new issue
+
+> ⚠️ DESTRUCTIVE: This creates a public issue on the repo. The
+> user must confirm before execution.
+
+1. Confirm on route `/owner/repo/issues/new`
+2. Type the title into `title-input`
+3. Type the body into `body-textarea`
+4. **STOP and confirm with the user**: "I'm about to submit an
+   issue titled '<title>' to <owner/repo>. Proceed?"
+5. Wait for explicit user approval (yes/no)
+6. If approved: Click `submit-new-issue-btn` (which is flagged
+   `destructive: true` in the element inventory)
+7. Verify: URL changes to `/owner/repo/issues/N`
+8. If denied: abort the workflow and report what was NOT done
+```
+
+The compiler documents the workflow but does not click the
+destructive element at compile time. See the "Destructive
+actions" rule in `SKILL.md` Step 2.
   agent know the workflow succeeded?
 - Edge cases the agent is likely to hit get an "If X, then Y"
   sub-step at the end of the workflow.
