@@ -21,44 +21,32 @@ That's the whole idea.
 Don't want to do this manually? Give this prompt to your agent — it will set everything up for you:
 
 ```
-You are setting up web2skill (w2s) on this machine. Follow these steps IN ORDER.
+You are setting up web2skill (w2s), a skill that turns websites into
+agent-readable skills. Your job: clone the repo, install it into your
+skills directory, verify it loads, and report.
 
-Step 1 — Check prerequisites:
-- Verify git is installed (run `git --version`).
-- Verify Python 3.11+ is installed (run `python3 --version`).
-If either is missing, stop and tell the user to install it first.
+Steps:
+1. Clone the repo to ~/web2skill (or `git pull` if it exists).
+2. Detect your skills directory. Common locations:
+   - Claude Code: ~/.claude/skills/
+   - Codex: ~/.codex/skills/
+   - Cursor: ask the user or check ~/.cursor/skills/
+   - Other: search for an existing skills/ directory or ask the user.
+3. Copy ~/web2skill/w2s into your skills directory as `web2skill/`.
+4. Verify by reading ~/.claude/skills/web2skill/SKILL.md (or your
+   agent's path) — first line should be `---`.
+5. Report:
+   - Install path
+   - Validator path: ~/web2skill/w2s/validate.py
+   - First command to try: "Compile https://github.com/foo/bar into a skill."
 
-Step 2 — Clone the w2s repository:
-- If ~/web2skill already exists, run `git -C ~/web2skill pull`.
-- Otherwise, run: `git clone https://github.com/rishi-ie/web2skill.git ~/web2skill`
-
-Step 3 — Install w2s into your agent's skills directory:
-- Detect which agent you are (Claude Code, Codex CLI, Cursor, etc.).
-- Claude Code: `mkdir -p ~/.claude/skills && cp -r ~/web2skill/w2s ~/.claude/skills/web2skill`
-- Codex: `mkdir -p ~/.codex/skills && cp -r ~/web2skill/w2s ~/.codex/skills/web2skill`
-- Cursor: ask the user for the skills directory path.
-- If unsure: install for all of the above.
-
-Step 4 — (Optional) Ask the user: "Do you want browser-use installed? It lets compiled skills run in a real browser with a visible window."
-If yes:
-  - `pip install browser-use pyyaml`
-  - `python3 -m playwright install chromium`
-  - Ask which LLM provider (OpenAI, Anthropic, or Google) and how to set the API key.
-
-Step 5 — Verify:
-- Confirm `SKILL.md` exists at the target path. Read the first 5 lines — it should start with `---`.
-- If Step 4 ran: `python3 ~/web2skill/w2s/validate.py ~/web2skill/w2s/examples/simple-static-site`
-
-Step 6 — Print this exact report:
-  w2s installed at: <path>
-  Examples at: ~/web2skill/w2s/examples/
-  [browser-use installed: yes/no]
-  Next step: "Compile https://github.com/foo/bar into a skill."
-
-Do not modify any files. Stop after the report.
+Do not modify the repo. Do not run the validator yet. Just install and
+report.
 ```
 
-What it does: detects your platform, clones the repo, copies the skill into your agent, optionally installs browser-use, runs the validator to prove it works, and prints a clean handoff. Total: under 2 minutes.
+After setup, ask your agent: **"Compile https://github.com/foo/bar into a skill."**
+
+What it does: detects your platform, clones the repo, copies the skill into your agent, verifies the install, and reports. To run compiled skills, see [Running compiled skills](#running-compiled-skills) below.
 
 ---
 
